@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Plan">
+<meta name="theme-color" content="#0f1115">
+<title>My Plan</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--card2:#20242d;--line:#2a2f3a;--text:#eef0f4;--mute:#9aa3b2;--accent:#7cc4ff;--good:#6fd39b;--warn:#ffb86b;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;border-bottom:1px solid var(--line)}
+header h1{margin:0 0 8px;font-size:20px;letter-spacing:-.2px}
+#q{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:16px}
+main{padding:14px 16px calc(env(safe-area-inset-bottom) + 90px)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#12151b;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;background:none;border:0;color:var(--mute);padding:10px 0 12px;font-size:12px;font-weight:600}
+nav button.on{color:var(--accent)}
+nav button span{display:block;font-size:19px;margin-bottom:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 6px;font-size:17px}
+.card h3{margin:0 0 4px;font-size:15px}
+.mute{color:var(--mute);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600}
+.btn.p{background:var(--accent);color:#06121e;border-color:var(--accent)}
+.btn.s{padding:7px 10px;font-size:13px}
+.bar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--good);transition:width .25s}
+.ex{border-top:1px solid var(--line);padding:12px 0}
+.ex:first-of-type{border-top:0}
+.sets{display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;margin-top:8px;align-items:center}
+.sets input{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:16px;text-align:center}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;background:var(--card2);color:var(--mute);margin-top:4px}
+.tag.up{background:#173a28;color:var(--good)}
+ul,ol{margin:6px 0;padding-left:20px}li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:12px}
+.pill{display:inline-flex;gap:4px;background:var(--card2);border-radius:10px;padding:3px}
+.pill button{background:none;border:0;color:var(--mute);padding:6px 10px;border-radius:8px;font-weight:600;font-size:13px}
+.pill button.on{background:var(--accent);color:#06121e}
+.hit{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+.hit b{display:block;margin-bottom:4px}
+.big{font-size:28px;font-weight:700}
+.hide{display:none}
+input.f{padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:16px;width:110px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Today</h1>
+  <input id="q" type="search" placeholder="Ask: workout today, what am I avoiding…" autocomplete="off">
+</header>
+<main>
+  <div id="results" class="hide"></div>
+  <section id="v-today"></section>
+  <section id="v-food" class="hide"></section>
+  <section id="v-rules" class="hide"></section>
+  <section id="v-track" class="hide"></section>
+</main>
+<nav>
+  <button data-v="today" class="on"><span>🏋️</span>Today</button>
+  <button data-v="food"><span>🍽️</span>Food</button>
+  <button data-v="rules"><span>📋</span>Rules</button>
+  <button data-v="track"><span>📈</span>Track</button>
+</nav>
+
+<script>
+/* ---------- storage (falls back to memory if blocked) ---------- */
+const mem={};
+const S={
+  get(k,d){try{const v=localStorage.getItem('jp_'+k);if(v!==null)return JSON.parse(v)}catch(e){}return k in mem?mem[k]:d},
+  set(k,v){mem[k]=v;try{localStorage.setItem('jp_'+k,JSON.stringify(v))}catch(e){}}
+};
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const weekStart=()=>{const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);d.setHours(0,0,0,0);return d};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- plan data ---------- */
+const W=[
+ {k:'A',name:'Push (heavy)',ex:[['Barbell bench press',3,'5–8'],['Incline dumbbell press',3,'8–12'],['Cable lateral raise',4,'12–20'],['Overhead cable triceps extension',3,'10–15'],['Hanging knee raise',3,'10–15']]},
+ {k:'B',name:'Pull (heavy)',ex:[['Pull-up or lat pulldown',3,'6–10'],['Chest-supported dumbbell row',3,'8–12'],['Straight-arm cable pulldown',2,'12–15'],['Reverse pec deck (rear delts)',3,'15–20'],['Incline dumbbell curl',3,'8–12']]},
+ {k:'C',name:'Shoulders and arms',ex:[['Seated dumbbell shoulder press',3,'6–10'],['Dumbbell lateral raise (drop set on last)',4,'12–20'],['Cable rear delt fly',3,'15–20'],['EZ-bar curl',3,'8–12'],['Rope pushdown (superset with curl)',3,'8–12'],['Hammer curl',2,'10–15'],['Cable crunch',3,'10–15']]},
+ {k:'D',name:'Upper (volume)',ex:[['Machine chest press',3,'8–12'],['Neutral-grip lat pulldown',3,'8–12'],['Seated cable row',3,'10–12'],['Cable lateral raise',3,'15–20'],['Cable curl',2,'10–15'],['Overhead triceps extension (superset with curl)',2,'10–15'],['Ab wheel or plank',3,'8–12 / 45 s']]}
+];
+const express=w=>[[w.ex[0][0],3,w.ex[0][2]],['Lateral raise (cable or DB)',3,'12–20'],['Curl (any)',3,'8–12'],['Triceps pushdown (superset)',3,'10–15']];
+
+/* ---------- nav ---------- */
+let view='today';
+const titles={today:'Today',food:'Food',rules:'Rules',track:'Track'};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){view=v;document.getElementById('q').value='';document.getElementById('results').classList.add('hide');
+ ['today','food','rules','track'].forEach(x=>document.getElementById('v-'+x).classList.toggle('hide',x!==v));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+ document.getElementById('title').textContent=titles[v];window.scrollTo(0,0);render[v]();}
+
+/* ---------- TODAY ---------- */
+let expressMode=false;
+function topOf(r){const m=String(r).match(/(\d+)\s*[–-]\s*(\d+)/);return m?+m[2]:null}
+function lastFor(name){const L=S.get('logs',{})[name];return L&&L.length?L[L.length-1]:null}
+function renderToday(){
+ const idx=S.get('idx',0),w=W[idx],list=expressMode?express(w):w.ex;
+ const done=S.get('done',[]).filter(d=>new Date(d+'T12:00')>=weekStart()).length;
+ const d=S.get('daily',{})[today()]||{p:0,w:0};
+ let h=`<div class="card"><div class="mute">Next in rotation · ${done}/4 this week</div>
+  <h2>Workout ${w.k} — ${w.name}</h2>
+  <div class="row" style="margin-top:8px"><div class="pill"><button id="mFull" class="${expressMode?'':'on'}">Full · 60 min</button><button id="mExp" class="${expressMode?'on':''}">Express · 35 min</button></div>
+  <select id="pick" class="btn s">${W.map((x,i)=>`<option value="${i}" ${i===idx?'selected':''}>Do ${x.k} instead</option>`).join('')}</select></div>
+  <div class="mute" style="margin-top:8px">Rest 2–3 min on the first lift, 60–90 s on the rest. Stop each set 1–2 reps short of failure.</div></div>
+  <div class="card">`;
+ list.forEach((e,i)=>{const last=lastFor(e[0]);const top=topOf(e[2]);
+  let lastTxt='No log yet',tag='';
+  if(last){lastTxt='Last: '+last.sets.map(s=>(s.w||'BW')+'×'+s.r).join(', ');
+   if(top&&last.sets.length>=e[1]&&last.sets.every(s=>+s.r>=top))tag='<span class="tag up">Hit the top of the range: add weight</span>';
+   else tag='<span class="tag">Beat at least one number from last time</span>';}
+  h+=`<div class="ex"><h3>${esc(e[0])}</h3><div class="mute">${e[1]} × ${e[2]} · ${esc(lastTxt)}</div>${tag}
+   <div class="sets"><span></span><span class="mute" style="text-align:center">lb</span><span class="mute" style="text-align:center">reps</span>`;
+  for(let s=0;s<e[1];s++){const p=last&&last.sets[s];
+   h+=`<span class="mute">${s+1}</span><input inputmode="decimal" data-e="${i}" data-s="${s}" data-f="w" placeholder="${p?esc(p.w):''}"><input inputmode="numeric" data-e="${i}" data-s="${s}" data-f="r" placeholder="${p?esc(p.r):''}">`;}
+  h+=`</div></div>`;});
+ h+=`<button class="btn p" id="finish" style="width:100%;margin-top:8px">Finish workout ${w.k} → next is ${W[(idx+1)%4].k}</button></div>`;
+ h+=`<div class="card"><h2>Protein</h2><div class="row"><span class="big">${d.p}</span><span class="mute">/ 150 g</span></div>
+  <div class="bar"><i style="width:${Math.min(100,d.p/150*100)}%"></i></div>
+  <div class="row"><button class="btn s" data-p="40">+40 meal</button><button class="btn s" data-p="30">+30 shake</button><button class="btn s" data-p="20">+20 yogurt</button><button class="btn s" data-p="10">+10</button><button class="btn s" data-p="-10">−10</button></div>
+  <h2 style="margin-top:14px">Water</h2><div class="row"><span class="big">${d.w.toFixed(1)}</span><span class="mute">/ 3 L</span></div>
+  <div class="bar"><i style="width:${Math.min(100,d.w/3*100)}%;background:var(--accent)"></i></div>
+  <div class="row"><button class="btn s" data-wa="0.5">+0.5 L</button><button class="btn s" data-wa="-0.5">−0.5 L</button></div></div>`;
+ const v=document.getElementById('v-today');v.innerHTML=h;
+ v.querySelector('#mFull').onclick=()=>{expressMode=false;renderToday()};
+ v.querySelector('#mExp').onclick=()=>{expressMode=true;renderToday()};
+ v.querySelector('#pick').onchange=e=>{S.set('idx',+e.target.value);renderToday()};
+ v.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>bump('p',+b.dataset.p));
+ v.querySelectorAll('[data-wa]').forEach(b=>b.onclick=()=>bump('w',+b.dataset.wa));
+ v.querySelector('#finish').onclick=()=>{
+  const logs=S.get('logs',{}),by={};
+  v.querySelectorAll('.sets input').forEach(inp=>{if(!inp.value)return;const e=+inp.dataset.e,s=+inp.dataset.s;(by[e]=by[e]||{})[s]=(by[e][s]||{});by[e][s][inp.dataset.f]=inp.value});
+  let n=0;Object.keys(by).forEach(e=>{const sets=Object.keys(by[e]).sort((a,b)=>a-b).map(s=>({w:by[e][s].w||'',r:by[e][s].r||''})).filter(s=>s.r);
+   if(!sets.length)return;const name=list[e][0];(logs[name]=logs[name]||[]).push({date:today(),sets});n++;});
+  if(!n&&!confirm('No sets logged. Mark the workout done anyway?'))return;
+  S.set('logs',logs);S.set('idx',(idx+1)%4);S.set('done',[...S.get('done',[]),today()]);expressMode=false;window.scrollTo(0,0);renderToday();};
+}
+function bump(f,x){const all=S.get('daily',{});const d=all[today()]||{p:0,w:0};d[f]=Math.max(0,Math.round((d[f]+x)*10)/10);all[today()]=d;S.set('daily',all);renderToday();}
+
+/* ---------- FOOD ---------- */
+function renderFood(){document.getElementById('v-food').innerHTML=`
+<div class="card"><h2>The rules</h2><ol>
+<li><b>7:30 rule:</b> out past 8pm? Grab a DCT to-go box first.</li>
+<li><b>Protein first:</b> pick the station by its protein.</li>
+<li><b>2 fun meals a week</b> (fried chicken, pizza, mac and cheese, orange chicken), chosen ahead of time.</li>
+<li><b>No weeknight delivery.</b> One weekend order a week; grilled orders don't count as a fun meal.</li>
+<li><b>Hungry late?</b> Eat from your stash, then wait 20 minutes.</li></ol>
+<div class="mute">Plate: 2 palms protein · 1 fist carbs · 1 fist veg</div></div>
+<div class="card"><h2>Default orders</h2><table>
+<tr><th>Where</th><th>Order</th><th>Protein</th></tr>
+<tr><td>DCT Choolah</td><td>Chicken + rice + veg, extra chicken</td><td>35–45 g</td></tr>
+<tr><td>DCT self-serve</td><td>Chicken breast + sweet potato or rice; slice it, pour Choolah sauce on</td><td>40 g</td></tr>
+<tr><td>DCT to-go</td><td>Either of the above, eaten later</td><td>35–45 g</td></tr>
+<tr><td>Cox Twisted Taco</td><td>Bowl: double chicken, rice, salsa, lettuce; no queso or sour cream; light beans</td><td>45–55 g</td></tr>
+<tr><td>Eagle Emporium</td><td>Turkey or chicken sandwich + shake</td><td>40–50 g</td></tr>
+<tr><td>Breakfast</td><td>Eggs or Greek yogurt + fruit, or a shake + banana</td><td>30 g</td></tr></table>
+<div class="mute" style="margin-top:8px">Go to Cox before 11:30am or after 1:30pm. Rotate DCT stations so Choolah doesn't get old.</div></div>
+<div class="card"><h2>Dorm stash</h2><ul>
+<li>Shakes: Fairlife Core Power or Premier Protein (26–42 g)</li><li>Greek yogurt, such as Oikos Pro (20–25 g)</li><li>Beef or turkey jerky</li><li>Bananas and rice cakes before a lift</li><li>Protein bars with no sorbitol, maltitol or erythritol</li></ul></div>
+<div class="card"><h2>Weekend delivery (grilled)</h2><div>Naked or grilled tenders, grilled chicken bowls, or dry-rub traditional wings. Skip boneless wings and fries.</div></div>`;}
+
+/* ---------- RULES ---------- */
+function renderRules(){document.getElementById('v-rules').innerHTML=`
+<div class="card"><h2>Drinking nights</h2><table><tr><th>Weeks</th><th>Limit</th></tr>
+<tr><td>1–4</td><td>One night, 4 drinks max</td></tr><tr><td>5 on</td><td>2–3 for the whole weekend</td></tr></table><ol>
+<li>Decide the number before you leave and tell a friend.</li><li>Full protein dinner first (take a to-go box).</li><li>One glass of water between drinks.</li>
+<li>Spirits with a flat mixer, not beer or soda.</li><li>Shake on your desk before you leave; when you're back: shake, water, bed. No delivery.</li><li>Set a pouch limit for the night too.</li></ol></div>
+<div class="card"><h2>Gut and bloating</h2><b>Weeks 1–2, avoid:</b><ul>
+<li>Carbonated drinks, including energy drinks</li><li>Sugar alcohols (sorbitol, maltitol, erythritol)</li><li>Big portions of beans, onion, garlic</li><li>Regular milk in large amounts</li></ul>
+<b>Weeks 3–4:</b> add one back every 3 days (beans, then curry, then milk). Limit whichever brings the bloating back.
+<div class="mute" style="margin-top:6px">Every day: eat slowly (15+ min), walk 10 min after your biggest meal, coffee with food.</div></div>
+<div class="card"><h2>Breaking the plateau</h2><ol>
+<li>Log every set (Today tab).</li><li>Hit the top of the rep range on every set, then add the smallest jump (e.g. bench 135 → 140).</li>
+<li>Stop each set 1–2 reps short of failure.</li><li>Curls and raises: add reps first, then use cables for smaller steps.</li>
+<li>Stuck 3 sessions in a row? Swap to a variation for 4–6 weeks.</li><li>Every 6th week: deload (half the sets, nothing near failure).</li></ol>
+<div class="mute">Each Sunday, book 4 one-hour gym blocks before 6pm.</div></div>
+<div class="card"><h2>Equipment taken?</h2><table>
+<tr><td>Bench</td><td>DB bench or machine chest press</td></tr><tr><td>Lat pulldown</td><td>Assisted pull-up or single-arm cable pulldown</td></tr>
+<tr><td>Cable station</td><td>Dumbbell version</td></tr><tr><td>Rows</td><td>Single-arm DB row</td></tr></table></div>
+<div class="card"><h2>Sleep</h2>7+ hours on at least 5 nights. Fixed wake time, no caffeine after 2pm, phone across the room. Under 6 hours: do the express workout and don't go for new records.</div>
+<div class="card"><h2>Optional lower back</h2>2 × 12 back extensions or light Romanian deadlifts at the end of any session. Not enough to grow your legs.</div>`;}
+
+/* ---------- TRACK ---------- */
+function renderTrack(){
+ const wt=S.get('weigh',[]),ws=S.get('waist',[]);
+ const recent=wt.filter(x=>(Date.now()-new Date(x.d+'T12:00'))/864e5<7);
+ const avg=recent.length?(recent.reduce((a,b)=>a+b.v,0)/recent.length).toFixed(1):'—';
+ const prev=wt.filter(x=>{const a=(Date.now()-new Date(x.d+'T12:00'))/864e5;return a>=7&&a<14});
+ const pavg=prev.length?(prev.reduce((a,b)=>a+b.v,0)/prev.length):null;
+ const diff=pavg&&recent.length?(avg-pavg).toFixed(1):null;
+ document.getElementById('v-track').innerHTML=`
+<div class="card"><h2>Morning weight</h2><div class="row"><input id="wIn" class="f" inputmode="decimal" placeholder="lb"><button class="btn p" id="wAdd">Save</button></div>
+<div class="row" style="margin-top:10px"><div><div class="mute">7-day average</div><div class="big">${avg}</div></div>
+${diff!==null?`<div><div class="mute">vs last week</div><div class="big" style="color:${diff<=0?'var(--good)':'var(--warn)'}">${diff>0?'+':''}${diff}</div></div>`:''}</div>
+<div class="mute">Weigh 3–4 mornings a week, after the bathroom, before eating. Aim to lose 0.5–1 lb a week.</div>
+${wt.slice(-6).reverse().map(x=>`<div class="mute">${x.d}: ${x.v} lb</div>`).join('')}</div>
+<div class="card"><h2>Waist (at navel)</h2><div class="row"><input id="zIn" class="f" inputmode="decimal" placeholder="in"><button class="btn p" id="zAdd">Save</button></div>
+${ws.slice(-6).reverse().map(x=>`<div class="mute">${x.d}: ${x.v}"</div>`).join('')||'<div class="mute">Measure once a week. Phase 2 starts around 28".</div>'}</div>
+<div class="card"><h2>When to adjust (every 3 weeks)</h2><table>
+<tr><td>Losing 0.5–1 lb/wk, lifts up</td><td>Keep going</td></tr><tr><td>Weight flat</td><td>−150 kcal (skip one carb side a day)</td></tr>
+<tr><td>Losing &gt;1.5 lb/wk or lifts dropping</td><td>+150 kcal</td></tr><tr><td>Waist ~28", sides leaner</td><td>Phase 2: maintenance or +200 kcal</td></tr></table></div>
+<div class="card"><h2>Targets</h2>150 g protein · ~2,200 kcal · fat 60–70 g · carbs 200–250 g · 3 L water</div>`;
+ const add=(key,id)=>{const v=parseFloat(document.getElementById(id).value);if(!v)return;const a=S.get(key,[]).filter(x=>x.d!==today());a.push({d:today(),v});a.sort((x,y)=>x.d<y.d?-1:1);S.set(key,a);renderTrack();};
+ document.getElementById('wAdd').onclick=()=>add('weigh','wIn');document.getElementById('zAdd').onclick=()=>add('waist','zIn');
+}
+const render={today:renderToday,food:renderFood,rules:renderRules,track:renderTrack};
+
+/* ---------- ASK / SEARCH ---------- */
+const QA=[
+ {k:'workout today lift gym session next rotation what do i do',q:"What's my workout today?",a:()=>{const w=W[S.get('idx',0)];return `Workout ${w.k}: ${w.name}. ${w.ex.map(e=>e[0]).join(' · ')}`},go:'today'},
+ {k:'avoid avoiding bloat bloating gut fodmap carbonated sugar alcohol milk beans onion garlic',q:'What am I avoiding?',a:()=>'Carbonated drinks · sugar alcohols (sorbitol, maltitol, erythritol) · big portions of beans, onion, garlic · regular milk in large amounts. Weeks 3–4: add them back one every 3 days.',go:'rules'},
+ {k:'eat food dct cox choolah lunch dinner order meal what should',q:'What should I eat?',a:()=>'DCT Choolah with extra chicken · DCT chicken + sweet potato with curry sauce · Cox burrito bowl with double chicken, no queso · Emporium sandwich + shake.',go:'food'},
+ {k:'late night hungry snack delivery wings buffalo craving order',q:'Hungry late at night?',a:()=>'Eat from your stash, wait 20 minutes. No delivery on weeknights. Weekend: one grilled order (naked tenders, dry-rub wings).',go:'food'},
+ {k:'8pm 8 closed out late to-go togo emporium',q:'Out past 8pm?',a:()=>'Take a DCT to-go box before 8. Backup: Eagle Emporium turkey or chicken sandwich + a shake.',go:'food'},
+ {k:'drink drinking alcohol party weekend night out limit beer',q:'Drinking limit?',a:()=>'Weeks 1–4: one night, 4 drinks max. Then 2–3 for the whole weekend. Eat a protein dinner first, water between drinks, shake and bed after.',go:'rules'},
+ {k:'protein target calories macros how much water fat carbs',q:'Daily targets?',a:()=>'150 g protein · ~2,200 kcal · 60–70 g fat · 200–250 g carbs · 3 L water.',go:'today'},
+ {k:'fun meal cheat pizza fried chicken mac',q:'Fun meals?',a:()=>'2 a week, chosen ahead of time.',go:'food'},
+ {k:'stuck plateau stall heavier progress bench weight add increase',q:'Stuck on a lift?',a:()=>'Hit the top of the rep range on every set, then add the smallest jump. Stuck 3 sessions? Swap to a variation for 4–6 weeks. Deload every 6th week.',go:'rules'},
+ {k:'busy crowded taken bench machine 7pm swap',q:'Equipment taken?',a:()=>'Bench → DB bench or machine press · pulldown → assisted pull-up · cables → dumbbell version · rows → single-arm DB row.',go:'rules'},
+ {k:'short time express quick tired deadline sleep',q:'Short on time or sleep?',a:()=>'Do the 35-min express workout: first lift of the day, lateral raises, then a curl and triceps superset, 3 sets each.',go:'today'},
+ {k:'stash snacks shake buy fridge',q:"What's in my stash?",a:()=>'Shakes (Core Power, Premier) · Oikos Pro yogurt · jerky · bananas · rice cakes · protein bars with no sugar alcohols.',go:'food'},
+ {k:'weigh weight waist track adjust progress plateau scale phase',q:'When do I adjust?',a:()=>'Every 3 weeks on the weekly average: flat → −150 kcal; losing over 1.5 lb/wk → +150 kcal; waist ~28" → Phase 2.',go:'track'},
+ {k:'sleep bed caffeine coffee',q:'Sleep rules?',a:()=>'7+ hours on 5 nights a week. Fixed wake time, no caffeine after 2pm, phone across the room.',go:'rules'}
+];
+const qEl=document.getElementById('q'),res=document.getElementById('results');
+qEl.addEventListener('input',()=>{
+ const t=qEl.value.toLowerCase().trim();
+ if(!t){res.classList.add('hide');document.getElementById('v-'+view).classList.remove('hide');return;}
+ const words=t.split(/\W+/).filter(w=>w.length>1&&!['what','my','is','am','i','do','the','a','for','should','how','to'].includes(w));
+ const scored=QA.map(x=>({x,s:words.reduce((n,w)=>n+((x.k+' '+x.q.toLowerCase()).includes(w)?1:0),0)})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s);
+ document.getElementById('v-'+view).classList.add('hide');res.classList.remove('hide');
+ res.innerHTML=scored.length?scored.slice(0,4).map(o=>`<div class="hit"><b>${esc(o.x.q)}</b>${esc(o.x.a())}<div style="margin-top:8px"><button class="btn s" data-go="${o.x.go}">Open ${titles[o.x.go]}</button></div></div>`).join('')
+  :`<div class="hit">No match. Try: workout, avoid, eat, late night, drinking, protein, stuck, busy.</div>`;
+ res.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+});
+
+renderToday();
+</script>
+</body>
+</html>
